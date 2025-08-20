@@ -1,10 +1,13 @@
 import os
 import logging
 from telegram import Update
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
 import yt_dlp
 
-BOT_TOKEN = "8465954340:AAF0effLI9fPqCX0B64ynhrOS8Rtde6WywE"
+# Token'ı environment variable'dan al
+BOT_TOKEN = os.environ.get('BOT_TOKEN')
+if not BOT_TOKEN:
+    raise ValueError("BOT_TOKEN environment variable not set")
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -12,8 +15,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Merhaba! Ben video indirme botuyum. Bana YouTube, Instagram veya TikTok linki gönder, videoyu indirip sana göndereyim.")
+def start(update: Update, context: CallbackContext):
+    update.message.reply_text("Merhaba! Ben video indirme botuyum. Bana YouTube, Instagram veya TikTok linki gönder, videoyu indirip sana göndereyim.")
 
 def download_video(url: str) -> str:
     output_path = "downloaded_video.mp4"
@@ -25,27 +28,31 @@ def download_video(url: str) -> str:
         ydl.download([url])
     return output_path
 
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+def handle_message(update: Update, context: CallbackContext):
     user_message = update.message.text
     if not user_message.startswith(('http://', 'https://')):
-        await update.message.reply_text("Lütfen geçerli bir URL gönderin.")
+        update.message.reply_text("Lütfen geçerli bir URL gönderin.")
         return
 
-    await update.message.reply_text("Videoyu indiriyorum... ⏳")
+    update.message.reply_text("Videoyu indiriyorum... ⏳")
 
     try:
         video_path = download_video(user_message)
-        await update.message.reply_video(video=open(video_path, 'rb'))
+        update.message.reply_video(video=open(video_path, 'rb'))
         os.remove(video_path)
     except Exception as e:
         logger.error(f"Hata: {e}")
-        await update.message.reply_text("❌ Video indirilemedi. URL'yi kontrol edin veya daha sonra tekrar deneyin.")
+        update.message.reply_text("❌ Video indirilemedi. URL'yi kontrol edin veya daha sonra tekrar deneyin.")
 
 def main():
-    application = Application.builder().token(BOT_TOKEN).build()
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    application.run_polling()
+    updater = Updater(BOT_TOKEN, use_context=True)
+    dispatcher = updater.dispatcher
+
+    dispatcher.add_handler(CommandHandler("start", start))
+    dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_message))
+
+    updater.start_polling()
+    updater.idle()
 
 if __name__ == "__main__":
     main()
