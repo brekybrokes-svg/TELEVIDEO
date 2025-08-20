@@ -2,7 +2,7 @@ import os
 import logging
 from telegram import Update
 from telegram.ext import Updater, CommandHandler, MessageHandler, CallbackContext
-from telegram.ext import filters  # Bu satırı ekleyin
+from telegram.ext import filters
 import yt_dlp
 
 # Token'ı environment variable'dan al
@@ -46,11 +46,12 @@ def handle_message(update: Update, context: CallbackContext):
         update.message.reply_text("❌ Video indirilemedi. URL'yi kontrol edin veya daha sonra tekrar deneyin.")
 
 def main():
-    updater = Updater(BOT_TOKEN, use_context=True)
+    # use_context parametresini kaldırın
+    updater = Updater(BOT_TOKEN)
     dispatcher = updater.dispatcher
 
     dispatcher.add_handler(CommandHandler("start", start))
-    dispatcher.add_handler(MessageHandler(filters.text & ~filters.command, handle_message))  # filters.text küçük harf
+    dispatcher.add_handler(MessageHandler(filters.text & ~filters.command, handle_message))
 
     updater.start_polling()
     updater.idle()
